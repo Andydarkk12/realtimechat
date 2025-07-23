@@ -1,0 +1,22 @@
+export const messagnesData = [
+    {
+        id:0,
+        senderId:2,
+        content:'asd',
+    },
+    {
+        id:1,
+        senderId:2,
+        content:'2asd',
+    },
+    {
+        id:2,
+        senderId:2,
+        content:'3asd',
+    },
+    {
+        id:3,
+        senderId:2,
+        content:'4asd',
+    },
+]
