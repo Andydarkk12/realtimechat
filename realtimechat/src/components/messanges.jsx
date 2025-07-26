@@ -1,7 +1,17 @@
 import { messagnesData } from "./messangesData";
+import { useState } from "react";
 import { MessangesDisplay } from "./messangesDisplay"; // Импорт компонента
 
-export const Messanges = ({ choosedChat, messanges }) => {
+export const Messanges = ({ choosedChat, messanges, sendMessage }) => {
+  const [message, setMessage] = useState("");
+
+  const handleSend = (e) => {
+    e.preventDefault(); 
+    if (!message.trim()) return; 
+    setMessage(""); 
+    sendMessage(message,choosedChat)
+  };
+
   if (!choosedChat) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -31,8 +41,14 @@ export const Messanges = ({ choosedChat, messanges }) => {
 
       {/* Блок отправки сообщения */}
       <div className="p-4 border-t border-gray-200 flex gap-2">
-        <input className="flex-1 border rounded p-2" placeholder="Введите сообщение..." />
-        <button className="bg-fuchsia-500 text-white px-4 py-2 rounded">Отправить</button>
+        <form onSubmit={handleSend}>
+          <input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="flex-1 border rounded p-2"
+            placeholder="Введите сообщение..."/>
+          <button type='submit'className="bg-fuchsia-500 text-white px-4 py-2 rounded">Отправить</button>
+        </form>
       </div>
     </div>
   );

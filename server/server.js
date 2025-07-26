@@ -35,7 +35,7 @@ io.on("connection", (socket) => {
   socket.on("auth", (data) => {
     console.log("Получены данные авторизации:", data);
     let user = checkUser(data)
-    user ? socket.emit('authTrue',returnChats(user.user_id)) : socket.emit('authFalse')
+    user ? socket.emit('authTrue',{chats:returnChats(user.user_id),userId:user.user_id}) : socket.emit('authFalse')
   });
 
   socket.on('chatSelected',(id)=>{
@@ -45,6 +45,27 @@ io.on("connection", (socket) => {
     console.log(messanges)
     socket.emit('messanges',messanges)
   })
+
+socket.on('sendMessage', (data) => {
+  console.log(data);
+
+  const stmt = db.prepare(`
+    INSERT INTO messages (content, chat_id, user_id, created_at)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  const timestamp = new Date().toISOString(); 
+
+  stmt.run(data.content, data.chat_id, data.userId, timestamp);
+
+
+  io.emit('newMessage', {
+    content: data.content,
+    chat_id: data.chat_id,
+    user_id: data.userId,
+    created_at: timestamp
+  });
+});
 
   socket.on("disconnect", () => {
     console.log("Клиент отключился");
