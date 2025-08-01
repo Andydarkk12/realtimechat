@@ -11,7 +11,7 @@ Implementing a Real-Time Chat Using React, Node.js, WebSocket.
 - Searching for users
 - Excluding chat participants
 
-# Technologies
+# Stack
 
 - Frontend: React, Tailwind CSS
 - Backend: Node.js, WebSocket
@@ -19,14 +19,24 @@ Implementing a Real-Time Chat Using React, Node.js, WebSocket.
 
 # Requirements
 
-- Node v20.13.0
-- Npm v10.5.2
+- Docker 
+- Docker-compose
 
 # Start
 
-- bash
- cd server
- node server.js
- cd ..
- npm run dev
+ - go to the root of the project 
+ - run docker-compose build;
+
+ ```shell
+ 
+docker-compose build
+ ```
+
+Then run
+
+```shell
+docker-compose up
+```
+
+Go to the browser and open localhost:80
  
