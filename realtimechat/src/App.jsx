@@ -22,7 +22,6 @@ function App() {
   const [editing, setEditing] = useState(false);
 
 
-  // const socket = useRef(io('http://localhost:8080'))
   const socket = useRef(null)
   useEffect(()=>{
     socket.current = io('http://localhost:8080')
@@ -70,6 +69,7 @@ function App() {
   useEffect(() => {
     if (isNumber(choosedChat)) {
       socket.current.emit('chatSelected', choosedChat)}
+      getMembers(choosedChat)
   }, [choosedChat])
 
   const sendMessage = (content,chat_id)=>{
@@ -105,9 +105,18 @@ function App() {
     socket.current.emit('kickUser',{choosedChat,userId})
   }
 
+  const changeChatName = (id,name) =>{
+    socket.current.emit('changeChatName',{id,name,userId})
+  }
+  const changeChatImage = (id,image) =>{
+    socket.current.emit('changeChatImage',{id,image,userId})
+  }
+
   const getObjectOfChat = (id, array) => {
     return array.find(chat => chat.chat_id === id);
   };
+  
+
   
   return (
     <>
@@ -116,7 +125,7 @@ function App() {
       <ChatList setEditing={setEditing} setChatCreating={setChatCreating} chats={chats} onChooseChat={setChoosedChat}/>
       {chatCreating ? 
       <CreateChat createChatFunc={createChatFunc} addedUsers={addedUsers} setAddedUsers={setAddedUsers} findUser={findUser} foundUsers={foundUsers}/>:
-      <Messanges setEditing={setEditing} editing={editing} kickUser={kickUser} chatMembers={chatMembers} getMembers={getMembers} sendMessage = {sendMessage} messanges={messanges} choosedChat={getObjectOfChat(choosedChat,chats)}/>}
+      <Messanges changeChatName={changeChatName} changeChatImage={changeChatImage} userId={userId} setEditing={setEditing} editing={editing} kickUser={kickUser} chatMembers={chatMembers} getMembers={getMembers} sendMessage = {sendMessage} messanges={messanges} choosedChat={getObjectOfChat(choosedChat,chats)}/>}
     </div>
     </>
   )

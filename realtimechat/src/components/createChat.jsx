@@ -9,7 +9,7 @@ export const CreateChat = ({findUser , foundUsers, setAddedUsers, addedUsers, cr
     },[searching])
   return (
     <div className="p-4 space-y-4 w-full">
-      <h2 className="text-xl font-semibold mb-2">Создать новый чат</h2>
+      <h2 className="text-xl font-semibold mb-2">Create new chat</h2>
       <input
         type="text"
         placeholder="Название чата"
@@ -37,7 +37,7 @@ export const CreateChat = ({findUser , foundUsers, setAddedUsers, addedUsers, cr
       </div>
 
     <div className="mt-4">
-  <h3 className="font-medium mb-2">Найденные пользователи:</h3>
+  <h3 className="font-medium mb-2">Found users:</h3>
   <div className="space-y-2">
     {foundUsers.map((user) => (
       <div
@@ -69,7 +69,7 @@ export const CreateChat = ({findUser , foundUsers, setAddedUsers, addedUsers, cr
 
 
       <div className="mt-4">
-        <h3 className="font-medium mb-2">Выбранные пользователи:</h3>
+        <h3 className="font-medium mb-2">Choosed users:</h3>
 <div className="space-y-2">
   {addedUsers.map((user) => (
     <div
@@ -92,7 +92,7 @@ export const CreateChat = ({findUser , foundUsers, setAddedUsers, addedUsers, cr
           );
         }}
       >
-        Удалить
+        Delete
       </button>
     </div>
   ))}
@@ -103,7 +103,7 @@ export const CreateChat = ({findUser , foundUsers, setAddedUsers, addedUsers, cr
         className="mt-4 bg-fuchsia-600 text-white px-4 py-2 rounded"
         onClick={()=>createChatFunc(chatName,imgUrl)}
       >
-        Создать чат
+        Create Chat
       </button>
     </div>
   )

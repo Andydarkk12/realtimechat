@@ -154,6 +154,17 @@ socket.on('sendMessage', (data) => {
     socket.emit('fetchMembers', users)
 
   })
+  socket.on('changeChatName',(data)=>{
+    const stmt = db.prepare('UPDATE chats SET chat_name = ? WHERE chat_id = ?')
+    stmt.run(data.name,data.id)
+    socket.emit('updateChats',returnChats(data.userId))
+    
+  })
+  socket.on('changeChatImage',(data)=>{
+    const stmt = db.prepare('UPDATE chats SET chat_img_URL = ? WHERE chat_id = ?')
+    stmt.run(data.image,data.id)
+    socket.emit('updateChats',returnChats(data.userId))
+  })
 
   socket.on("disconnect", () => {
     console.log("Клиент отключился");
