@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react"
+//redux
+import { useSelector, useDispatch } from "react-redux";
+import { addUser,removeUser } from '../features/uiSlice'
 
-export const CreateChat = ({findUser , foundUsers, setAddedUsers, addedUsers, createChatFunc}) => {
+export const CreateChat = ({findUser, createChatFunc}) => {
+    const dispatch = useDispatch()
+    const foundUsers = useSelector((state) =>state.ui.foundUsers)
+    const addedUsers = useSelector((state) =>state.ui.addedUsers)
     const [searching,setSearching] = useState('')
     const [chatName,setChatName] = useState('')
     const [imgUrl,setImgUrl] = useState('')
@@ -55,10 +61,7 @@ export const CreateChat = ({findUser , foundUsers, setAddedUsers, addedUsers, cr
         <button
           className="bg-fuchsia-600 text-white text-sm px-3 py-1 rounded hover:bg-fuchsia-700 transition"
           onClick={() => {
-  setAddedUsers((prev) =>
-    prev.some((u) => u.user_id === user.user_id) ? prev : [...prev, user]
-  )
-}}
+  dispatch(addUser((user)))}}
         >
           Добавить
         </button>
@@ -86,11 +89,7 @@ export const CreateChat = ({findUser , foundUsers, setAddedUsers, addedUsers, cr
       </div>
       <button
         className="bg-red-600 text-white text-sm px-3 py-1 rounded hover:bg-red-700 transition"
-        onClick={() => {
-          setAddedUsers(prev =>
-            prev.filter(u => u.user_id !== user.user_id)
-          );
-        }}
+        onClick={() => {dispatch(removeUser(user.user_id))}}
       >
         Delete
       </button>

@@ -135,6 +135,7 @@ socket.on('sendMessage', (data) => {
     const usersStmt = db.prepare(`SELECT * FROM users WHERE user_id IN(${placeholder})`)
     const users = usersStmt.all(...usersIds)
     console.log(users)
+    console.log('сработал феч')
     socket.emit('fetchMembers', users)
   })
 

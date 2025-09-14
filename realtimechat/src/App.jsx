@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useEffect } from 'react'
 import { Login } from './components/login'
 import { ChatList } from './components/chatList'
@@ -6,20 +5,31 @@ import { Messanges } from './components/messanges'
 import io from 'socket.io-client'
 import { useRef } from 'react'
 import { CreateChat } from './components/createChat'
+// redux
+import { useSelector, useDispatch } from "react-redux";
+import { setAuth, setUserId } from "./features/authSlice";
+import { setChats, setChatMembers } from "./features/chatsSlice"
+import { setMessages } from './features/messagesSlice'
+import { setFoundUsers, setAddedUsers, setEditing } from './features/uiSlice'
+
 function isNumber(val) {
     return val === +val;
 }
 function App() {
-  const [userId, setUserId] = useState(null)
-  const [choosedChat,setChoosedChat] = useState(null)
-  const [isAuth, setAuth] = useState(false)
-  const [chats,setChats] = useState([])
-  const [messanges,setMessanges] = useState([])
-  const [foundUsers,setFoundUsers] = useState([])
-  const [addedUsers, setAddedUsers] = useState([])
-  const [chatCreating, setChatCreating] = useState(false)
-  const [chatMembers, setChatMembers] = useState([])
-  const [editing, setEditing] = useState(false);
+  const dispatch = useDispatch();
+  //Auth slice
+  const isAuth = useSelector((state) => state.auth.isAuth); 
+  const userId = useSelector((state) => state.auth.userId)
+  //Chat slice
+  const choosedChat = useSelector((state) => state.chats.choosedChat)
+  const chats = useSelector((state) => state.chats.chats)
+  //Messages slice
+  //Messages slice in not using here
+  //Ui slice
+  const foundUsers = useSelector((state) =>state.ui.foundUsers)
+  const addedUsers = useSelector((state) =>state.ui.addedUsers)
+  const chatCreating = useSelector((state) =>state.ui.chatCreating)
+  const editing = useSelector((state) =>state.ui.editing)
 
 
   const socket = useRef(null)
@@ -27,13 +37,13 @@ function App() {
     socket.current = io('http://localhost:8080')
 
     socket.current.on("authTrue",(data)=>{
-      setAuth(true)
-      setChats(data.chats)
-      setUserId(data.userId)
+      dispatch(setAuth(true))
+      dispatch(setChats(data.chats))
+      dispatch(setUserId(data.userId))
     })
     socket.current.on('registerTrue',(data)=>{
-      setAuth(true)
-      setUserId(data.userId)
+      dispatch(setAuth(true))
+      dispatch(setUserId(data.userId))
     })
     socket.current.on('authFalse',(user)=>{
       alert(`Incorrect login or password`)
@@ -42,22 +52,22 @@ function App() {
       alert('There is already a user with this email!')
     })
       socket.current.on('messanges',(messanges)=>{
-      setMessanges(messanges)
+      dispatch(setMessages(messanges))
     })
     socket.current.on('newMessage',(message)=>{
       if (message.chat_id == choosedChat){
-        setMessanges((prev) => [...prev, message]);
+        dispatch(setMessages((prev) => [...prev, message]));
       }
     })
     socket.current.on('foundUsers',(users)=>{
-        setFoundUsers(users)
+        dispatch(setFoundUsers(users))
     })
     socket.current.on('fetchMembers',(users)=>{
-      setChatMembers(users)
+      dispatch(setChatMembers(users))
     })
 
     socket.current.on('updateChats',(chats)=>{
-      setChats(chats)
+      dispatch(setChats(chats))
     })
 
   return () => {
@@ -121,11 +131,11 @@ function App() {
   return (
     <>
     <div className="flex h-screen w-screen overflow-hidden">
-      {!isAuth && <Login register={register} auth={auth} setAuth = {setAuth}/>}
-      <ChatList setEditing={setEditing} setChatCreating={setChatCreating} chats={chats} onChooseChat={setChoosedChat}/>
+      {!isAuth && <Login  register={register} auth={auth}/>}
+      <ChatList/>
       {chatCreating ? 
-      <CreateChat createChatFunc={createChatFunc} addedUsers={addedUsers} setAddedUsers={setAddedUsers} findUser={findUser} foundUsers={foundUsers}/>:
-      <Messanges changeChatName={changeChatName} changeChatImage={changeChatImage} userId={userId} setEditing={setEditing} editing={editing} kickUser={kickUser} chatMembers={chatMembers} getMembers={getMembers} sendMessage = {sendMessage} messanges={messanges} choosedChat={getObjectOfChat(choosedChat,chats)}/>}
+      <CreateChat createChatFunc={createChatFunc} addedUsers={addedUsers} findUser={findUser} />:
+      <Messanges changeChatName={changeChatName} changeChatImage={changeChatImage} userId={userId} kickUser={kickUser} getMembers={getMembers} sendMessage = {sendMessage} choosedChat={getObjectOfChat(choosedChat,chats)}/>}
     </div>
     </>
   )

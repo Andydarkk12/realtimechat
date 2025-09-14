@@ -1,7 +1,16 @@
 import { useState } from "react";
-import { MessangesDisplay } from "./messangesDisplay"; // Импорт компонента
+import { MessangesDisplay } from "./messangesDisplay";
 import { EditChat } from "./editChat";
-export const Messanges = ({changeChatName, changeChatImage, userId, setEditing, editing, kickUser, chatMembers, getMembers, choosedChat, messanges, sendMessage }) => {
+//redux
+import { useSelector, useDispatch } from "react-redux";
+import { setEditing } from '../features/uiSlice'
+
+export const Messanges = ({changeChatName, changeChatImage, userId, kickUser, getMembers, choosedChat, sendMessage }) => {
+  const dispatch = useDispatch();
+
+  const editing = useSelector((state) =>state.ui.editing)
+  const chatMembers = useSelector((state) => state.chats.chatMembers)
+  const messanges = useSelector((state) => state.messages.messanges)
   const [message, setMessage] = useState("");
   
   const handleSend = (e) => {
@@ -55,7 +64,7 @@ export const Messanges = ({changeChatName, changeChatImage, userId, setEditing, 
             className="bg-fuchsia-500 text-white px-4 py-2 rounded"
           >Отправить</button>
           <button onClick={()=>
-            {setEditing(!editing)
+            {dispatch(setEditing(!editing))
             getMembers()
           }}
             className="ml-4 bg-fuchsia-500 text-white px-4 py-2 rounded"

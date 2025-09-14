@@ -1,6 +1,7 @@
 import { useState } from "react"
+//redux
 
-export const Login = ({setAuth,auth,register}) =>{
+export const Login = ({auth,register}) =>{
     const [email,setEmail] = useState("")
     const [password,setPassword] = useState("")
     
