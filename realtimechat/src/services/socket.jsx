@@ -1,109 +1,139 @@
-// src/services/socket.js
-import { io } from "socket.io-client";
-import { store } from "../store";
+// ###############################################
+// # Component for interaction with the server  #
+// ###############################################
+import { useEffect, useRef } from "react";
+import io from "socket.io-client";
+import { useDispatch, useSelector } from "react-redux";
 import { setAuth, setUserId } from "../features/authSlice";
 import { setChats, setChatMembers } from "../features/chatsSlice";
-import { setMessages, addMessage } from "../features/messagesSlice";
+import { setMessages } from "../features/messagesSlice";
 import { setFoundUsers } from "../features/uiSlice";
 
-//###############################################
+export const useSocket = () => {
+  function isNumber(val) {
+    return val === +val;
+}
+  const dispatch = useDispatch();
 
-//#  component for interaction with the server  #
+  //redux
+  const choosedChat = useSelector((state) => state.chats.choosedChat);
+  const addedUsers = useSelector((state) => state.ui.addedUsers);
+  const userId = useSelector((state) => state.auth.userId);
 
-//###############################################
+  const socket = useRef(null);
 
+  useEffect(() => {
+    socket.current = io("http://localhost:8080");
 
-let socket = null;
+    // listen
+    socket.current.on("authTrue", (data) => {
+      dispatch(setAuth(true));
+      dispatch(setChats(data.chats));
+      dispatch(setUserId(data.userId));
+    });
 
-export const initSocket = () => {
-  socket = io("http://localhost:8080");
+    socket.current.on("registerTrue", (data) => {
+      dispatch(setAuth(true));
+      dispatch(setUserId(data.userId));
+    });
 
-  //  \/ Subscribe to events \/
-  socket.on("authTrue", (data) => {
-    store.dispatch(setAuth(true));
-    store.dispatch(setChats(data.chats));
-    store.dispatch(setUserId(data.userId));
-  });
+    socket.current.on("authFalse", () => {
+      alert("Incorrect login or password");
+    });
 
-  socket.on("registerTrue", (data) => {
-    store.dispatch(setAuth(true));
-    store.dispatch(setUserId(data.userId));
-  });
+    socket.current.on("registerFalse", () => {
+      alert("There is already a user with this email!");
+    });
 
-  socket.on("authFalse", () => {
-    alert(`Incorrect login or password`);
-  });
+    socket.current.on("messanges", (messanges) => {
+      dispatch(setMessages(messanges));
+    });
 
-  socket.on("registerFalse", () => {
-    alert("There is already a user with this email!");
-  });
+    socket.current.on("newMessage", (message) => {
+      if (message.chat_id === choosedChat) {
+        dispatch(setMessages((prev) => [...prev, message]));
+      }
+    });
 
-  socket.on("messanges", (messages) => {
-    store.dispatch(setMessages(messages));
-  });
+    socket.current.on("foundUsers", (users) => {
+      dispatch(setFoundUsers(users));
+    });
 
-  socket.on("newMessage", (message) => {
-    const choosedChat = store.getState().chats.choosedChat;
-    if (message.chat_id === choosedChat) {
-      store.dispatch(addMessage(message));
-    }
-  });
+    socket.current.on("fetchMembers", (users) => {
+      dispatch(setChatMembers(users));
+    });
 
-  socket.on("foundUsers", (users) => {
-    store.dispatch(setFoundUsers(users));
-  });
+    socket.current.on("updateChats", (chats) => {
+      dispatch(setChats(chats));
+    });
 
-  socket.on("fetchMembers", (users) => {
-    store.dispatch(setChatMembers(users));
-  });
+    return () => {
+      socket.current.disconnect();
+    };
+  }, [choosedChat]);
 
-  socket.on("updateChats", (chats) => {
-    store.dispatch(setChats(chats));
-  });
+  // emits
+  const sendMessage = (content, chat_id) => {
+    socket.current.emit("sendMessage", { content, chat_id, userId });
+  };
 
-  return socket;
+  const findUser = (username) => {
+    socket.current.emit("findUser", username);
+  };
+
+  const createChatFunc = (chatName, imgUrl) => {
+    socket.current.emit("createChat", {
+      currentUser: userId,
+      addedUsers,
+      imgUrl,
+      chatName,
+    });
+  };
+
+  const register = (login, password) => {
+    socket.current.emit("register", { login, password });
+  };
+
+  const auth = (login, password) => {
+    socket.current.emit("auth", { login, password });
+  };
+
+  const getMembers = (chatId) => {
+    socket.current.emit("getMembers", chatId);
+  };
+
+  const kickUser = (kickUserId) => {
+    socket.current.emit("kickUser", { choosedChat, userId: kickUserId });
+  };
+
+  const changeChatName = (id, name) => {
+    socket.current.emit("changeChatName", { id, name, userId });
+  };
+
+  const changeChatImage = (id, image) => {
+    socket.current.emit("changeChatImage", { id, image, userId });
+  };
+  const getObjectOfChat = (id, array) => {
+    return array.find(chat => chat.chat_id === id);
+  };
+  useEffect(() => {
+  if (isNumber(choosedChat)) {
+    socket.current.emit("chatSelected", choosedChat);
+    getMembers(choosedChat); 
+  }
+}, [choosedChat]);
+
+  return {
+    sendMessage,
+    findUser,
+    createChatFunc,
+    register,
+    auth,
+    getMembers,
+    kickUser,
+    changeChatName,
+    changeChatImage,
+    getObjectOfChat
+  };
 };
-
-export const getSocket = () => socket;
-
-//   \/ emit-functions \/
-
-export const selectChat = (chatId) => {
-  socket.emit("chatSelected", chatId);
-};
-
-export const sendMessage = (content, chat_id, userId) => {
-  socket.emit("sendMessage", { content, chat_id, userId });
-};
-
-export const findUser = (username) => {
-  socket.emit("findUser", username);
-};
-
-export const createChat = (userId, addedUsers, chatName, imgUrl) => {
-  socket.emit("createChat", { currentUser: userId, addedUsers, chatName, imgUrl });
-};
-
-export const register = (login, password) => {
-  socket.emit("register", { login, password });
-};
-
-export const auth = (login, password) => {
-  socket.emit("auth", { login, password });
-};
-
-export const getMembers = (choosedChat) => {
-  socket.emit("getMembers", choosedChat);
-};
-
-export const kickUser = (choosedChat, userId) => {
-  socket.emit("kickUser", { choosedChat, userId });
-};
-
-export const changeChatName = (id, name, userId) => {
-  socket.emit("changeChatName", { id, name, userId });
-};
-
-export const changeChatImage = (id, image, userId) => {
-  socket.emit("changeChatImage", { id, image, userId });
-};
+export default useSocket;
