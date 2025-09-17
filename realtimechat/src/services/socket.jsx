@@ -1,6 +1,4 @@
-// ###############################################
-// # Component for interaction with the server  #
-// ###############################################
+// useSocket.js
 import { useEffect, useRef } from "react";
 import io from "socket.io-client";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,22 +8,22 @@ import { setMessages } from "../features/messagesSlice";
 import { setFoundUsers } from "../features/uiSlice";
 
 export const useSocket = () => {
-  function isNumber(val) {
-    return val === +val;
-}
   const dispatch = useDispatch();
 
-  //redux
   const choosedChat = useSelector((state) => state.chats.choosedChat);
   const addedUsers = useSelector((state) => state.ui.addedUsers);
   const userId = useSelector((state) => state.auth.userId);
 
   const socket = useRef(null);
 
+  // Проверка числа
+  const isNumber = (val) => typeof val === "number" && !isNaN(val);
+
+  // Инициализация сокета один раз
   useEffect(() => {
     socket.current = io("http://localhost:8080");
 
-    // listen
+    // ==================== LISTENERS ====================
     socket.current.on("authTrue", (data) => {
       dispatch(setAuth(true));
       dispatch(setChats(data.chats));
@@ -42,11 +40,11 @@ export const useSocket = () => {
     });
 
     socket.current.on("registerFalse", () => {
-      alert("There is already a user with this email!");
+      alert("There is already a user with this username!");
     });
 
-    socket.current.on("messanges", (messanges) => {
-      dispatch(setMessages(messanges));
+    socket.current.on("messanges", (messages) => {
+      dispatch(setMessages(messages));
     });
 
     socket.current.on("newMessage", (message) => {
@@ -70,18 +68,21 @@ export const useSocket = () => {
     return () => {
       socket.current.disconnect();
     };
-  }, [choosedChat]);
+  }, []); // Пустой массив, чтобы сокет создавался один раз
 
-  // emits
+  // ==================== EMITS ====================
   const sendMessage = (content, chat_id) => {
+    if (!userId) return;
     socket.current.emit("sendMessage", { content, chat_id, userId });
   };
 
   const findUser = (username) => {
+    if (!username || !socket.current) return;
     socket.current.emit("findUser", username);
   };
 
   const createChatFunc = (chatName, imgUrl) => {
+    if (!userId) return;
     socket.current.emit("createChat", {
       currentUser: userId,
       addedUsers,
@@ -91,37 +92,46 @@ export const useSocket = () => {
   };
 
   const register = (login, password) => {
+    if (!login || !password) return;
     socket.current.emit("register", { login, password });
   };
 
   const auth = (login, password) => {
+    if (!login || !password) return;
     socket.current.emit("auth", { login, password });
   };
 
   const getMembers = (chatId) => {
+    if (!chatId) return;
     socket.current.emit("getMembers", chatId);
   };
 
   const kickUser = (kickUserId) => {
+    if (!choosedChat || !kickUserId) return;
     socket.current.emit("kickUser", { choosedChat, userId: kickUserId });
   };
 
   const changeChatName = (id, name) => {
+    if (!id || !name) return;
     socket.current.emit("changeChatName", { id, name, userId });
   };
 
   const changeChatImage = (id, image) => {
+    if (!id || !image) return;
     socket.current.emit("changeChatImage", { id, image, userId });
   };
+
   const getObjectOfChat = (id, array) => {
-    return array.find(chat => chat.chat_id === id);
+    return array.find((chat) => chat.chat_id === id);
   };
+
+  // ==================== Выбор чата ====================
   useEffect(() => {
-  if (isNumber(choosedChat)) {
-    socket.current.emit("chatSelected", choosedChat);
-    getMembers(choosedChat); 
-  }
-}, [choosedChat]);
+    if (isNumber(choosedChat) && socket.current) {
+      socket.current.emit("chatSelected", choosedChat);
+      getMembers(choosedChat);
+    }
+  }, [choosedChat]);
 
   return {
     sendMessage,
@@ -133,7 +143,8 @@ export const useSocket = () => {
     kickUser,
     changeChatName,
     changeChatImage,
-    getObjectOfChat
+    getObjectOfChat,
   };
 };
+
 export default useSocket;

@@ -1,181 +1,181 @@
 import { Server } from "socket.io";
-import Database from 'better-sqlite3';
 import bcrypt from "bcrypt";
-import http from 'http';
-const db = new Database('./database.db');
-
+import http from "http";
+import prisma from "./prismaClient.js";
 
 const io = new Server(8080, {
   cors: {
     origin: "*",
   },
 });
+
 const checkUser = async (data) => {
-  const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
-  const user = stmt.get(data.login);
+  const user = await prisma.users.findUnique({
+    where: { username: data.login },
+  });
   if (!user) return false;
+
   const match = await bcrypt.compare(data.password, user.password);
   return match ? user : false;
 };
-const checkUsername = (data)=>{
-  const stmt = db.prepare('SELECT * FROM users WHERE username = ?')
-  const user = stmt.get(data.login)
-  return user || false
-}
-const returnChats = (id) => {
-  const stmt = db.prepare('SELECT chat_id FROM users_chat WHERE user_id = ?');
-  const userChats = stmt.all(id);
-  const chatIds = userChats.map(chat => chat.chat_id);
 
+const checkUsername = async (data) => {
+  const user = await prisma.users.findUnique({
+    where: { username: data.login },
+  });
+  return user || false;
+};
+
+const returnChats = async (id) => {
+  const userChats = await prisma.users_chat.findMany({
+    where: { user_id: id },
+    select: { chat_id: true },
+  });
+
+  const chatIds = userChats.map((chat) => chat.chat_id);
   if (chatIds.length === 0) return [];
 
+  const chats = await prisma.chats.findMany({
+    where: { chat_id: { in: chatIds } },
+  });
 
-  const placeholders = chatIds.map(() => '?').join(', ');
-  const chatStmt = db.prepare(`SELECT * FROM chats WHERE chat_id IN (${placeholders})`);
-
-  const chats = chatStmt.all(...chatIds);
   return chats;
 };
 
 io.on("connection", (socket) => {
   console.log("✅ Клиент подключен");
 
-  socket.on("auth", (data) => {
-    let user = checkUser(data)
-    user ? socket.emit('authTrue',{chats:returnChats(user.user_id),userId:user.user_id}) : socket.emit('authFalse')
-    console.log(returnChats(user.user_id))
+  socket.on("auth", async (data) => {
+    let user = await checkUser(data);
+    if (user) {
+      socket.emit("authTrue", {
+        chats: await returnChats(user.user_id),
+        userId: user.user_id,
+      });
+    } else {
+      socket.emit("authFalse");
+    }
   });
 
-socket.on('register', async (data) => {
-    if (checkUsername(data)) {
-      socket.emit('registerFalse');
+  socket.on("register", async (data) => {
+    if (await checkUsername(data)) {
+      socket.emit("registerFalse");
     } else {
       const hashedPassword = await bcrypt.hash(data.password, 10);
-
-      const stmt = db.prepare(`
-        INSERT INTO users (username, email, password, user_img_URL)
-        VALUES (?, ?, ?, ?)
-      `);
-
-      const result = stmt.run(data.login, "empty", hashedPassword, "empty");
-      const userId = result.lastInsertRowid;
-
-      socket.emit('registerTrue', { userId });
+      const result = await prisma.users.create({
+        data: {
+          username: data.login,
+          email: "empty",
+          password: hashedPassword,
+          user_img_URL: "empty",
+        },
+      });
+      socket.emit("registerTrue", { userId: result.user_id });
     }
   });
 
-  socket.on('chatSelected',(id)=>{
-    console.log(id)
-    const stmt = db.prepare('SELECT * FROM messages WHERE chat_id = ?');
-    const messanges = stmt.all(id);
-    socket.emit('messanges',messanges)
-    const chatStmt = db.prepare('SELECT * FROM chats WHERE chat_id = ?')
-    const chat = chatStmt.all(id);
-    console.log(messanges)
-    console.log(chat)
-    socket.emit('setChatObject',chat)
-  })
+  socket.on("chatSelected", async (id) => {
+    const messages = await prisma.messages.findMany({
+      where: { chat_id: id },
+    });
+    socket.emit("messanges", messages);
 
-socket.on('sendMessage', (data) => {
-  console.log(data)
-  const stmt = db.prepare(`
-    INSERT INTO messages (content, chat_id, user_id, created_at)
-    VALUES (?, ?, ?, ?)
-  `);
+    const chat = await prisma.chats.findUnique({ where: { chat_id: id } });
+    socket.emit("setChatObject", chat);
+  });
 
-  const timestamp = new Date().toISOString(); 
+  socket.on("sendMessage", async (data) => {
+    const timestamp = new Date().toISOString();
+    await prisma.messages.create({
+      data: {
+        content: data.content,
+        chat_id: data.chat_id,
+        user_id: data.userId,
+        created_at: timestamp,
+      },
+    });
 
-  stmt.run(data.content, data.chat_id, data.userId, timestamp);
+    const messages = await prisma.messages.findMany({
+      where: { chat_id: data.chat_id },
+    });
+    io.emit("messanges", messages);
+  });
 
+  socket.on("findUser", async (username) => {
+    const users = await prisma.users.findMany({
+      where: { username: { contains: username } },
+      take: 10,
+    });
+    socket.emit("foundUsers", users);
+  });
 
-  const messagestmt = db.prepare('SELECT * FROM messages WHERE chat_id = ?');
-  const messanges = messagestmt.all(data.chat_id);
-  io.emit('messanges',messanges)
-});
-
-  socket.on('findUser', (username) => {
-  const stmt = db.prepare(`SELECT * FROM users WHERE username LIKE ? LIMIT 10`);
-  const users = stmt.all(`%${username}%`);
-  socket.emit('foundUsers', users);
-});
-
-  socket.on('createChat',(data)=>{
+  socket.on("createChat", async (data) => {
     const { currentUser, addedUsers, imgUrl, chatName } = data;
 
-    // Создаём чат
-    const insertChatStmt = db.prepare(`
-      INSERT INTO chats (chat_name, chat_img_URL, creator_id)
-      VALUES (?, ?, ?)
-    `);
-    const result = insertChatStmt.run(chatName, imgUrl, currentUser);
+    const chat = await prisma.chats.create({
+      data: {
+        chat_name: chatName,
+        chat_img_URL: imgUrl,
+        creator_id: currentUser,
+      },
+    });
 
-    // Получаем ID созданного чата
-    const chatId = result.lastInsertRowid;
-
-    // Подготавливаем вставку пользователей в users_chat
-    const insertUserChatStmt = db.prepare(`
-      INSERT INTO users_chat (user_id, chat_id)
-      VALUES (?, ?)
-    `);
-
-    // Вставляем всех пользователей, включая currentUser (если его ещё нет в списке)
     const allUsers = [...addedUsers];
-
-    const hasCreator = addedUsers.some(u => u.user_id === currentUser);
-    if (!hasCreator) {
-      allUsers.push({ user_id: currentUser });
-    }
+    const hasCreator = addedUsers.some((u) => u.user_id === currentUser);
+    if (!hasCreator) allUsers.push({ user_id: currentUser });
 
     for (const user of allUsers) {
-      insertUserChatStmt.run(user.user_id, chatId);
+      await prisma.users_chat.create({
+        data: { user_id: user.user_id, chat_id: chat.chat_id },
+      });
     }
-    socket.emit('updateChats',returnChats(currentUser))
-  })
 
-  socket.on('getMembers',(chatId)=>{
-    const stmt = db.prepare(`SELECT * FROM users_chat WHERE chat_id = ?`)
-    console.log(chatId)
-    const rows = stmt.all(chatId)
-    const usersIds = rows.map((row)=>row.user_id)
-    const placeholder = usersIds.map(()=>"?").join(', ')
-    const usersStmt = db.prepare(`SELECT * FROM users WHERE user_id IN(${placeholder})`)
-    const users = usersStmt.all(...usersIds)
-    console.log(users)
-    console.log('сработал феч')
-    socket.emit('fetchMembers', users)
-  })
+    socket.emit("updateChats", await returnChats(currentUser));
+  });
 
-  socket.on('kickUser',(data)=>{
-    const stmt = db.prepare(`
-      DELETE FROM users_chat 
-      WHERE chat_id = ? AND user_id = ?
-    `);
-    stmt.run(data.choosedChat, data.userId);
-    const stmt2 = db.prepare(`SELECT * FROM users_chat WHERE chat_id = ?`)
-    const rows = stmt2.all(data.choosedChat)
-    const usersIds = rows.map((row)=>row.user_id)
-    const placeholder = usersIds.map(()=>"?").join(', ')
-    const usersStmt = db.prepare(`SELECT * FROM users WHERE user_id IN(${placeholder})`)
-    const users = usersStmt.all(...usersIds)
-    console.log(users)
-    socket.emit('fetchMembers', users)
+  socket.on("getMembers", async (chatId) => {
+    const rows = await prisma.users_chat.findMany({ where: { chat_id: chatId } });
+    const usersIds = rows.map((r) => r.user_id);
 
-  })
-  socket.on('changeChatName',(data)=>{
-    const stmt = db.prepare('UPDATE chats SET chat_name = ? WHERE chat_id = ?')
-    stmt.run(data.name,data.id)
-    socket.emit('updateChats',returnChats(data.userId))
-    
-  })
-  socket.on('changeChatImage',(data)=>{
-    const stmt = db.prepare('UPDATE chats SET chat_img_URL = ? WHERE chat_id = ?')
-    stmt.run(data.image,data.id)
-    socket.emit('updateChats',returnChats(data.userId))
-  })
+    const users = await prisma.users.findMany({
+      where: { user_id: { in: usersIds } },
+    });
+
+    socket.emit("fetchMembers", users);
+  });
+
+  socket.on("kickUser", async (data) => {
+    await prisma.users_chat.deleteMany({
+      where: { chat_id: data.choosedChat, user_id: data.userId },
+    });
+
+    const rows = await prisma.users_chat.findMany({ where: { chat_id: data.choosedChat } });
+    const usersIds = rows.map((r) => r.user_id);
+
+    const users = await prisma.users.findMany({
+      where: { user_id: { in: usersIds } },
+    });
+
+    socket.emit("fetchMembers", users);
+  });
+
+  socket.on("changeChatName", async (data) => {
+    await prisma.chats.update({
+      where: { chat_id: data.id },
+      data: { chat_name: data.name },
+    });
+    socket.emit("updateChats", await returnChats(data.userId));
+  });
+
+  socket.on("changeChatImage", async (data) => {
+    await prisma.chats.update({
+      where: { chat_id: data.id },
+      data: { chat_img_URL: data.image },
+    });
+    socket.emit("updateChats", await returnChats(data.userId));
+  });
 
   socket.on("disconnect", () => {
     console.log("Клиент отключился");
   });
-
-
 });

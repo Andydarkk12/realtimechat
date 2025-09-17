@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./database.db"
+}
+
+model users {
+  user_id     Int           @id @default(autoincrement())
+  username    String        @unique
+  email       String
+  password    String
+  user_img_URL String
+  chats       chats[]       @relation("ChatCreator")
+  messages    messages[]
+  users_chat  users_chat[]
+}
+
+model chats {
+  chat_id      Int           @id @default(autoincrement())
+  chat_name    String
+  chat_img_URL String
+  creator_id   Int?
+  users        users?        @relation("ChatCreator", fields: [creator_id], references: [user_id])
+  messages     messages[]
+  users_chat   users_chat[]
+}
+
+model messages {
+  message_id Int      @id @default(autoincrement())
+  chat_id    Int
+  user_id    Int
+  content    String
+  created_at DateTime @default(now())
+  users      users    @relation(fields: [user_id], references: [user_id])
+  chats      chats    @relation(fields: [chat_id], references: [chat_id])
+}
+
+model users_chat {
+  users_chat_id Int  @id @default(autoincrement())
+  user_id       Int
+  chat_id       Int
+  users         users @relation(fields: [user_id], references: [user_id])
+  chats         chats @relation(fields: [chat_id], references: [chat_id])
+}

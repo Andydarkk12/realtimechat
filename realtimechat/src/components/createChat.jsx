@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-// redux
+// Redux
 import { useSelector, useDispatch } from "react-redux";
 import { addUser, removeUser } from "../features/uiSlice";
-// socket service
-import socketService from "../services/socket";
+// Socket hook
+import useSocket from "../services/socket";
 
 export const CreateChat = () => {
   const dispatch = useDispatch();
@@ -14,11 +14,15 @@ export const CreateChat = () => {
   const [chatName, setChatName] = useState("");
   const [imgUrl, setImgUrl] = useState("");
 
+  // Используем хук useSocket и достаём нужные методы
+  const { findUser, createChatFunc } = useSocket();
+
+  // Поиск пользователей при вводе
   useEffect(() => {
     if (searching.trim()) {
-      socketService.findUser(searching); 
+      findUser(searching);
     }
-  }, [searching]);
+  }, [searching, findUser]);
 
   return (
     <div className="p-4 space-y-4 w-full">
@@ -106,10 +110,12 @@ export const CreateChat = () => {
 
       <button
         className="mt-4 bg-fuchsia-600 text-white px-4 py-2 rounded"
-        onClick={() => socketService.createChat(chatName, imgUrl)} 
+        onClick={() => createChatFunc(chatName, imgUrl)}
       >
         Create Chat
       </button>
     </div>
   );
 };
+
+export default CreateChat;
