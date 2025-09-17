@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import Database from 'better-sqlite3';
+import bcrypt from "bcrypt";
 import http from 'http';
 const db = new Database('./database.db');
 
@@ -9,11 +10,13 @@ const io = new Server(8080, {
     origin: "*",
   },
 });
-const checkUser = (data)=>{
-    const stmt = db.prepare('SELECT * FROM users WHERE username = ? AND password = ?')
-    const user = stmt.get(data.login, data.password)
-    return user || false
-}
+const checkUser = async (data) => {
+  const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
+  const user = stmt.get(data.login);
+  if (!user) return false;
+  const match = await bcrypt.compare(data.password, user.password);
+  return match ? user : false;
+};
 const checkUsername = (data)=>{
   const stmt = db.prepare('SELECT * FROM users WHERE username = ?')
   const user = stmt.get(data.login)
@@ -43,20 +46,23 @@ io.on("connection", (socket) => {
     console.log(returnChats(user.user_id))
   });
 
-  socket.on('register',(data)=>{
-    if (checkUsername(data)){
-      socket.emit('registerFalse')
-    }
-    else{
+socket.on('register', async (data) => {
+    if (checkUsername(data)) {
+      socket.emit('registerFalse');
+    } else {
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+
       const stmt = db.prepare(`
         INSERT INTO users (username, email, password, user_img_URL)
         VALUES (?, ?, ?, ?)
-        `)
-      const result=stmt.run(data.login,"emty",data.password,"empty")
-      const userId=result.lastInsertRowid
-      socket.emit('registerTrue',{userId})
+      `);
+
+      const result = stmt.run(data.login, "empty", hashedPassword, "empty");
+      const userId = result.lastInsertRowid;
+
+      socket.emit('registerTrue', { userId });
     }
-  })
+  });
 
   socket.on('chatSelected',(id)=>{
     console.log(id)
