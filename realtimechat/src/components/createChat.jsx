@@ -14,10 +14,8 @@ export const CreateChat = () => {
   const [chatName, setChatName] = useState("");
   const [imgUrl, setImgUrl] = useState("");
 
-  // Используем хук useSocket и достаём нужные методы
   const { findUser, createChatFunc } = useSocket();
 
-  // Поиск пользователей при вводе
   useEffect(() => {
     if (searching.trim()) {
       findUser(searching);
@@ -74,7 +72,7 @@ export const CreateChat = () => {
                 className="bg-fuchsia-600 text-white text-sm px-3 py-1 rounded hover:bg-fuchsia-700 transition"
                 onClick={() => dispatch(addUser(user))}
               >
-                Добавить
+                Add
               </button>
             </div>
           ))}

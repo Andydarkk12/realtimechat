@@ -16,10 +16,8 @@ export const useSocket = () => {
 
   const socket = useRef(null);
 
-  // Проверка числа
   const isNumber = (val) => typeof val === "number" && !isNaN(val);
 
-  // Инициализация сокета один раз
   useEffect(() => {
     socket.current = io("http://localhost:8080");
 
@@ -68,7 +66,7 @@ export const useSocket = () => {
     return () => {
       socket.current.disconnect();
     };
-  }, []); // Пустой массив, чтобы сокет создавался один раз
+  }, []); 
 
   // ==================== EMITS ====================
   const sendMessage = (content, chat_id) => {
